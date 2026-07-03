@@ -1,1 +1,44 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 
+local LocalPlayer = Players.LocalPlayer
+local enabled = true
+
+-- Kurze Benachrichtigung
+local StarterGui = game:GetService("StarterGui")
+StarterGui:SetCore("SendNotification", {
+    Title = "Anti-Sit";
+    Text = "Aktiviert - Du kannst dich nicht mehr hinsetzen";
+    Duration = 4;
+    Icon = "rbxassetid://6031094678";
+})
+
+print("Anti-Sit Script aktiviert!")
+
+-- Haupt-Schutz
+RunService.Heartbeat:Connect(function()
+    if not enabled then return end
+    
+    local character = LocalPlayer.Character
+    if not character then return end
+    
+    local humanoid = character:FindFirstChildOfClass("Humanoid")
+    if humanoid and humanoid.Sit then
+        humanoid.Sit = false
+        humanoid:ChangeState(Enum.HumanoidStateType.Running)
+    end
+end)
+
+-- Blockiert neue Seats
+workspace.DescendantAdded:Connect(function(obj)
+    if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
+        obj.Disabled = true
+    end
+end)
+
+-- Alle bestehenden Seats deaktivieren
+for _, obj in ipairs(workspace:GetDescendants()) do
+    if obj:IsA("Seat") or obj:IsA("VehicleSeat") then
+        obj.Disabled = true
+    end
+end
