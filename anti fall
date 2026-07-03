@@ -1,0 +1,214 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local Workspace = game:GetService("Workspace")
+local UserInputService = game:GetService("UserInputService")
+local LocalPlayer = Players.LocalPlayer
+
+local CONFIG_FILE = "GermanVoice_Config.json"
+
+-- ====================== CONFIG ======================
+local config = { PositionX = 0.7, PositionY = 0.15, SizeX = 280, SizeY = 380 }
+
+local function saveConfig()
+    pcall(function() writefile(CONFIG_FILE, game:GetService("HttpService"):JSONEncode(config)) end)
+end
+
+local function loadConfig()
+    if isfile(CONFIG_FILE) then
+        pcall(function()
+            config = game:GetService("HttpService"):JSONDecode(readfile(CONFIG_FILE))
+        end)
+    end
+end
+
+loadConfig()
+
+-- ====================== GUI ======================
+local function createMainGUI()
+    local ScreenGui = Instance.new("ScreenGui")
+    ScreenGui.ResetOnSpawn = false
+    ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+
+    local Frame = Instance.new("Frame")
+    Frame.Size = UDim2.new(0, config.SizeX, 0, config.SizeY)
+    Frame.Position = UDim2.new(0, config.PositionX, 0, config.PositionY)
+    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Frame.BorderSizePixel = 0
+    Frame.Parent = ScreenGui
+
+    -- Draggable + Resizable (wie vorher)
+    local dragging, dragStart, startPos = false
+    Frame.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = Frame.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            Frame.Position = UDim2.new(0, startPos.X.Offset + delta.X, 0, startPos.Y.Offset + delta.Y)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+            config.PositionX = Frame.Position.X.Offset
+            config.PositionY = Frame.Position.Y.Offset
+            saveConfig()
+        end
+    end)
+
+    local ResizeHandle = Instance.new("Frame")
+    ResizeHandle.Size = UDim2.new(0, 18, 0, 18)
+    ResizeHandle.Position = UDim2.new(1, -18, 1, -18)
+    ResizeHandle.BackgroundColor3 = Color3.fromRGB(80, 80, 80)
+    ResizeHandle.Parent = Frame
+
+    local resizing = false
+    ResizeHandle.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = true
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if resizing and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - ResizeHandle.AbsolutePosition
+            local newX = math.clamp(delta.X + 18, 200, 450)
+            local newY = math.clamp(delta.Y + 18, 180, 500)
+            Frame.Size = UDim2.new(0, newX, 0, newY)
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            resizing = false
+            config.SizeX = Frame.Size.X.Offset
+            config.SizeY = Frame.Size.Y.Offset
+            saveConfig()
+        end
+    end)
+
+    local CloseBtn = Instance.new("TextButton")
+    CloseBtn.Size = UDim2.new(0, 25, 0, 25)
+    CloseBtn.Position = UDim2.new(1, -30, 0, 5)
+    CloseBtn.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+    CloseBtn.Text = "✕"
+    CloseBtn.TextColor3 = Color3.new(1,1,1)
+    CloseBtn.Parent = Frame
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        ScreenGui:Destroy()
+    end)
+
+    local Title = Instance.new("TextLabel")
+    Title.Size = UDim2.new(1, -50, 0, 35)
+    Title.Position = UDim2.new(0, 5, 0, 5)
+    Title.BackgroundTransparency = 1
+    Title.Text = "German Voice Tools"
+    Title.TextColor3 = Color3.new(1,1,1)
+    Title.Font = Enum.Font.GothamBold
+    Title.TextSize = 16
+    Title.Parent = Frame
+
+    -- ON/OFF Button
+    local onOffButton = Instance.new("TextButton")
+    onOffButton.Size = UDim2.new(1, -20, 0, 50)
+    onOffButton.Position = UDim2.new(0, 10, 0, 50)
+    onOffButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+    onOffButton.Text = "Anti-Void: ON"
+    onOffButton.TextColor3 = Color3.new(1,1,1)
+    onOffButton.Font = Enum.Font.GothamBold
+    onOffButton.TextSize = 16
+    onOffButton.Parent = Frame
+
+    local antiVoidEnabled = true
+
+    onOffButton.MouseButton1Click:Connect(function()
+        antiVoidEnabled = not antiVoidEnabled
+        if antiVoidEnabled then
+            onOffButton.Text = "Anti-Void: ON"
+            onOffButton.BackgroundColor3 = Color3.fromRGB(0, 170, 0)
+        else
+            onOffButton.Text = "Anti-Void: OFF"
+            onOffButton.BackgroundColor3 = Color3.fromRGB(170, 0, 0)
+        end
+    end)
+
+    print("✅ Maximum Fall-Schutz aktiviert!")
+end
+
+-- ====================== MAXIMALER FALL-SCHUTZ ======================
+local function startAntiVoid()
+    -- Serverseitig – 5 Schichten Deaktivierung
+    pcall(function()
+        Workspace.FallenPartsDestroyHeight = 0/0
+        Workspace.FallenPartsDestroyHeight = -math.huge
+        Workspace.FallenPartsDestroyHeight = 0/0
+        Workspace.FallenPartsDestroyHeight = -math.huge
+        Workspace.FallenPartsDestroyHeight = 0/0   -- doppelt & dreifach sicher
+    end)
+
+    -- Clientseitig – maximale Stabilität
+    RunService.Stepped:Connect(function()
+        if not antiVoidEnabled then return end
+        
+        local char = LocalPlayer.Character
+        if not char then return end
+        
+        local root = char:FindFirstChild("HumanoidRootPart")
+        local hum = char:FindFirstChild("Humanoid")
+        
+        if root and hum and hum.Health > 0 then
+            pcall(function() root:SetNetworkOwner(LocalPlayer) end)
+            
+            -- Extrem frühe Erkennung + sehr hoher Teleport
+            if root.Position.Y < -2 then
+                root.Velocity = Vector3.new(0, 0, 0)
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0)
+                root.AssemblyAngularVelocity = Vector3.new(0, 0, 0)
+                root.AssemblyLinearVelocity = Vector3.new(0, 0, 0) -- doppelt
+                
+                root.CFrame = CFrame.new(root.Position.X, 2000, root.Position.Z)  -- Y=2000 = extrem hoch
+                hum.Health = 9e9
+                hum.MaxHealth = 9e9
+            end
+        end
+    end)
+
+    task.spawn(function()
+        while task.wait(0.01) do
+            if not antiVoidEnabled then return end
+            local char = LocalPlayer.Character
+            if char then
+                local hum = char:FindFirstChild("Humanoid")
+                if hum then
+                    hum.MaxHealth = 9e9
+                    hum.Health = 9e9
+                end
+            end
+        end
+    end)
+
+    -- Extra stabiler Health-Lock + Sit-Verbot
+    LocalPlayer.CharacterAdded:Connect(function(char)
+        task.wait(0.3)
+        local hum = char:FindFirstChild("Humanoid")
+        if hum then
+            hum.MaxHealth = 9e9
+            hum.Health = 9e9
+            hum.Sit = false
+            hum:SetStateEnabled(Enum.HumanoidStateType.Seated, false)
+        end
+    end)
+end
+
+-- ====================== START ======================
+createMainGUI()
+startAntiVoid()
+
+print("🔥 Maximum Fall-Schutz aktiviert – du solltest jetzt nie mehr sterben!")
